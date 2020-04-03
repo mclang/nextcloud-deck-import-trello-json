@@ -1,0 +1,6 @@
+{
+	// I just HATE when some random tool messes up my perfect aligment!
+	"[go]":  {
+		"editor.formatOnSave": false
+	}
+}
