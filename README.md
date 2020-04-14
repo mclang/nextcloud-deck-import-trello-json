@@ -1,6 +1,6 @@
 # Import Trello Boards into Nextcloud Deck App
 
-Simple [Go](https://golang.org/)/Python script that can be used to import Trello boards from exported JSON files
+Simple [Go](https://golang.org/) and Python scripts that can be used to import Trello boards from exported JSON files
 using Nextcloud [Deck](https://apps.nextcloud.com/apps/deck) app [API](https://github.com/nextcloud/deck/blob/master/docs/API.md).
 
 **Work in Progress:**
