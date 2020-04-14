@@ -37,7 +37,8 @@ print('')
 
 # Add board to Deck and retrieve the new board id
 boardData = {'title': trelloBoardName, 'color': '0800fd'}
-response = requests.post('https://devel.elainft-notkeaksi.fi/index.php/apps/deck/api/v1.0/boards', auth = (user, pword), data=boardData )
+response = requests.post(boardUrl, auth = (user, pword), data=boardData )
+
 newboardId = json.loads(response.text)['id']
 print('Board ', trelloBoardName, 'created.')
 
