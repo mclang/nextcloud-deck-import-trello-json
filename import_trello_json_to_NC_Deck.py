@@ -7,13 +7,13 @@ import requests, json
 with open('config.json') as f:
     data = json.load(f)
 
-user = data['user']
-pword = data['password']
+apiUser = data['user']
+apiPword = data['password']
 url = data['url']
 
-boardurl = url + 'boards'
-stackurl = boardurl + '/%s/stacks'
-cardurl = boardurl + '/%s/stacks/%s/cards'
+boardUrl = url + 'boards'
+stackUrl = boardUrl + '/%s/stacks'
+cardUrl = boardUrl + '/%s/stacks/%s/cards'
 
 # user = input('Username: ')
 # pword = input('Password: ')
@@ -37,21 +37,21 @@ print('')
 
 # Add board to Deck and retrieve the new board id
 boardData = {'title': trelloBoardName, 'color': '0800fd'}
-response = requests.post(boardUrl, auth = (user, pword), data=boardData )
+response = requests.post(boardUrl, auth = (apiUser, apiPword), data=boardData )
 
 newboardId = json.loads(response.text)['id']
 print('Board ', trelloBoardName, 'created.')
 
 
 # Add stacks to the new board
-url = stackurl % newboardId
+url = stackUrl % newboardId
 stacks = {'listId': 'newStackId'}
 order = 1
 for lst in data['lists']:
     listId = lst['id']
     stackName = lst['name']
     stackData = {'title': stackName, 'order': order}
-    response = requests.post(url, auth=(user, pword), data=stackData)
+    response = requests.post(url, auth=(apiUser, apiPword), data=stackData)
     newstackId = json.loads(response.text)['id']
     stacks[listId] = newstackId
     order = order + 1
@@ -69,8 +69,8 @@ for crd in data['cards']:
     cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc}
     #cardDue = crd['due'] Let's first test without due dates
     #cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc, 'duedate': cardDue}
-    url = cardurl % (newboardId, newstackId)
-    response = requests.post(url, auth=(user, pword), data=cardData)
+    url = cardUrl % (newboardId, newstackId)
+    response = requests.post(url, auth=(apiUser, apiPword), data=cardData)
     newcardId = json.loads(response.text)['id']
     cards[cardId] = newcardId
     print('Card', cardName, 'imported to stack number', newstackId)
