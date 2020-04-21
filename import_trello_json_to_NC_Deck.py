@@ -12,8 +12,10 @@ apiPword = data['password']
 url = data['url']
 
 boardUrl = url + 'boards'
+labelUrl = boardUrl + '/%s/labels'
 stackUrl = boardUrl + '/%s/stacks'
 cardUrl = boardUrl + '/%s/stacks/%s/cards'
+cardLabelUrl = boardUrl + '/%s/stacks/%s/cards/%s/assignLabel'
 
 # user = input('Username: ')
 # pword = input('Password: ')
@@ -24,24 +26,50 @@ cardUrl = boardUrl + '/%s/stacks/%s/cards'
 with open('trello-data.json') as f:
     data = json.load(f)
 
-trelloBoardID = data['id']
 trelloBoardName = data['name']
-trelloCards = data['cards']
-trelloLists = data['lists']
-#trelloChecklists = data['checklists']
-
-print('Trello board id:', trelloBoardID)
-print('Trello board name: ', trelloBoardName)
-print('')
-# print(json.dumps(trelloCards, indent = 4))
 
 # Add board to Deck and retrieve the new board id
 boardData = {'title': trelloBoardName, 'color': '0800fd'}
-response = requests.post(boardUrl, auth = (apiUser, apiPword), data=boardData )
+response = requests.post(boardUrl, auth=(apiUser, apiPword), data=boardData )
 
 newboardId = json.loads(response.text)['id']
 print('Board ', trelloBoardName, 'created.')
 
+labels = {'labelId': 'newLabelId'}
+for label in data['labels']:
+    labelId = label['id']
+    if label['name'] == '':
+        labelTitle = 'Unnamed ' + label['color'] + ' label'
+    else:
+        labelTitle = label['name']
+    if label['color'] == 'red':
+        labelColor = 'ff0000'
+    elif label['color'] == 'yellow':
+        labelColor = 'ffff00'
+    elif label['color'] == 'orange':
+        labelColor = 'ff6600'
+    elif label['color'] == 'green':
+        labelColor = '00ff00'
+    elif label['color'] == 'purple':
+        labelColor = '9900ff'
+    elif label['color'] == 'blue':
+        labelColor = '0000ff'
+    elif label['color'] == 'sky':
+        labelColor = '00ccff'
+    elif label['color'] == 'lime':
+        labelColor = '00ff99'
+    elif label['color'] == 'pink':
+        labelColor = 'ff66cc'
+    elif label['color'] == 'black':
+        labelColor = '000000'
+    else:
+        labelColor = 'ffffff'
+    labelData = {'title': labelTitle, 'color': labelColor}
+    url = labelUrl % newboardId
+    response = requests.post(url, auth=(apiUser, apiPword), data=labelData)
+    newLabelId = json.loads(response.text)['id']
+    labels[labelId] = newLabelId
+    print('Label ', labelTitle, 'imported.')
 
 # Add stacks to the new board
 url = stackUrl % newboardId
@@ -75,6 +103,14 @@ for crd in data['cards']:
     cards[cardId] = newcardId
     print('Card', cardName, 'imported to stack number', newstackId)
 
-    #TO DO: if-loop for checking checklists
+    # If the card has a label assigned to it, we add it here
+    for lbl in crd['labels']:
+        oldLabelId = lbl['id']
+        newLabelId = int(labels[oldLabelId])
+        updateLabelData = {'labelId': newLabelId}
+        url = cardLabelUrl % (newboardId, newstackId, newcardId)
+        response = requests.put(url, auth=(apiUser, apiPword), data=updateLabelData)
+        print('Label assigned to card', cardName)
 
-# TO DO: labels
+#TODO: - checklists
+#TODO: - users / members

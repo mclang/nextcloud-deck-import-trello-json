@@ -18,7 +18,8 @@ Simple [Go](https://golang.org/) and Python scripts that can be used to import T
 - [x] Import Trello board with name
 - [x] Import lists as Deck stacks with name
 - [x] Import cards into respective stacks with name and markdown-formatted description
+- [x] Add labels (with colors and descriptions) to the board and assign them to the correct cards
 - [ ] Add checklists
-- [ ] Add labels
+- [ ] Assign users to cards
 
-Python script reads the url of the api, username, and password from config.json file, and uses trello-data.json as source data for parsing.
+Python script reads the url of the api, username, and password from config.json file, and uses trello-data.json as source data for parsing. Note that Nextcloud Deck cannot handle multiple labels with same names (will cause the script to fail).
