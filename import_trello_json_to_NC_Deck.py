@@ -1,7 +1,7 @@
 # Python 3 script for parsing data from json and uploading the data to a NextCloud deck application via API
 
-import requests, json
-#import getpass
+import json
+import requests
 
 # Configuration from config.json
 with open('config.json') as f:
@@ -11,31 +11,58 @@ apiUser = data['user']
 apiPword = data['password']
 url = data['url']
 
+
+# Define function for making POST requests
+def api_post(api_data, api_url):
+    response = requests.post(api_url, auth=(apiUser, apiPword), data=api_data)
+    if response:
+        print('Imported successfully ' + '"' + api_data['title'] + '"')
+        return json.loads(response.text)['id']
+    else:
+        print('Importing failed: ' + '"' + api_data['title'] + '"')
+        return ''
+
+
+# Functions for formulating the text strings for checklists
+def checklist_item(item):
+    if item['state'] == 'incomplete':
+        string_start = '[ ]'
+    else:
+        string_start = '[x]'
+    check_item_string = string_start + ' ' + item['name']
+    return check_item_string
+
+
+def formulate_checklist_text(checklist):
+    checklist_string = '\n\n## ' + checklist['name'] + '\n'
+    for item in checklist['checkItems']:
+        checklist_item_string = checklist_item(item)
+        checklist_string = checklist_string + '\n' + checklist_item_string
+    return checklist_string
+
+
+# Define urls for api requests
 boardUrl = url + 'boards'
 labelUrl = boardUrl + '/%s/labels'
 stackUrl = boardUrl + '/%s/stacks'
 cardUrl = boardUrl + '/%s/stacks/%s/cards'
 cardLabelUrl = boardUrl + '/%s/stacks/%s/cards/%s/assignLabel'
 
-# user = input('Username: ')
-# pword = input('Password: ')
-# url = input('API url: ')
-
-# pword = getpass.getpass() Does not work for some reason.
-
+# Define the source data
 with open('trello-data.json') as f:
     data = json.load(f)
 
-trelloBoardName = data['name']
-
 # Add board to Deck and retrieve the new board id
+trelloBoardName = data['name']
 boardData = {'title': trelloBoardName, 'color': '0800fd'}
-response = requests.post(boardUrl, auth=(apiUser, apiPword), data=boardData )
+newboardId = api_post(boardData, boardUrl)
 
-newboardId = json.loads(response.text)['id']
-print('Board ', trelloBoardName, 'created.')
 
+# Import labels
 labels = {'labelId': 'newLabelId'}
+
+print('')
+print('Importing labels...')
 for label in data['labels']:
     labelId = label['id']
     if label['name'] == '':
@@ -66,12 +93,20 @@ for label in data['labels']:
         labelColor = 'ffffff'
     labelData = {'title': labelTitle, 'color': labelColor}
     url = labelUrl % newboardId
-    response = requests.post(url, auth=(apiUser, apiPword), data=labelData)
-    newLabelId = json.loads(response.text)['id']
+    newLabelId = api_post(labelData, url)
     labels[labelId] = newLabelId
-    print('Label ', labelTitle, 'imported.')
+
+
+# Save checklist content into a library
+checklists = {'checklistId': 'Checklist string'}
+for checkl in data['checklists']:
+    checklistText = formulate_checklist_text(checkl)
+    checklists[checkl['id']] = checklistText
+
 
 # Add stacks to the new board
+print('')
+print('Importing stacks...')
 url = stackUrl % newboardId
 stacks = {'listId': 'newStackId'}
 order = 1
@@ -79,29 +114,31 @@ for lst in data['lists']:
     listId = lst['id']
     stackName = lst['name']
     stackData = {'title': stackName, 'order': order}
-    response = requests.post(url, auth=(apiUser, apiPword), data=stackData)
-    newstackId = json.loads(response.text)['id']
+    newstackId = api_post(stackData, url)
     stacks[listId] = newstackId
     order = order + 1
-    print('New stack imported:', stackName)
+
 
 # Go through the cards and assign them to the correct lists
+print('')
+print('Importing cards...')
 cards = {'cardId': 'newCardId'}
-
 for crd in data['cards']:
     cardId = crd['id']
     cardName = crd['name']
-    cardDesc = crd['desc']
+    stringEnd = ''
+    for checkl in crd['idChecklists']:
+        # find the respective checklist string from the library that was generated earlier
+        stringEnd = checklists[checkl]
+    cardDesc = crd['desc'] + stringEnd
     newstackId = stacks[crd['idList']]
     cardOrder = crd['idShort']
     cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc}
-    #cardDue = crd['due'] Let's first test without due dates
-    #cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc, 'duedate': cardDue}
+    # cardDue = crd['due'] Let's first test without due dates
+    # cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc, 'duedate': cardDue}
     url = cardUrl % (newboardId, newstackId)
-    response = requests.post(url, auth=(apiUser, apiPword), data=cardData)
-    newcardId = json.loads(response.text)['id']
+    newcardId = api_post(cardData, url)
     cards[cardId] = newcardId
-    print('Card', cardName, 'imported to stack number', newstackId)
 
     # If the card has a label assigned to it, we add it here
     for lbl in crd['labels']:
@@ -109,8 +146,10 @@ for crd in data['cards']:
         newLabelId = int(labels[oldLabelId])
         updateLabelData = {'labelId': newLabelId}
         url = cardLabelUrl % (newboardId, newstackId, newcardId)
-        response = requests.put(url, auth=(apiUser, apiPword), data=updateLabelData)
-        print('Label assigned to card', cardName)
+        labelResponse = requests.put(url, auth=(apiUser, apiPword), data=updateLabelData)
+        if labelResponse:
+            print('Label assigned to card', cardName)
+        else:
+            print('Assigning label failed to card:', cardName)
 
-#TODO: - checklists
-#TODO: - users / members
+# TODO: - due dates
