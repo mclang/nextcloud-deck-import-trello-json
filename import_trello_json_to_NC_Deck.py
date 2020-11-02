@@ -2,6 +2,7 @@
 
 import json
 import requests
+from dateutil import parser
 
 # Configuration from config.json
 with open('config.json') as f:
@@ -18,8 +19,25 @@ def api_post(api_data, api_url):
     if response:
         print('Imported successfully ' + '"' + api_data['title'] + '"')
         return json.loads(response.text)['id']
+    elif response.status_code == 400:
+        print('Importing failed: ' + '"' + api_data['title'] + '"')
+        print(response)
+        print('Bad request. Parameter missing?')
+        return ''
+    elif response.status_code == 403:
+        print('Importing failed: ' + '"' + api_data['title'] + '"')
+        print(response)
+        print('Permission denied, check credentials.')
+        return ''
+    elif response.status_code == 404:
+        print('Importing failed: ' + '"' + api_data['title'] + '"')
+        print(response)
+        print('Server not found.')
+        return ''
     else:
         print('Importing failed: ' + '"' + api_data['title'] + '"')
+        print('Something weird happened.')
+        print(response)
         return ''
 
 
@@ -39,6 +57,13 @@ def formulate_checklist_text(checklist):
         checklist_item_string = checklist_item(item)
         checklist_string = checklist_string + '\n' + checklist_item_string
     return checklist_string
+
+
+# This convert the duedate from Trello-format to Deck format (they both are ISO 8601, but signify timezone differently)
+def convert_date(trellodate):
+    date = parser.isoparse(trellodate)
+    deckdate = date.replace(microsecond=0).isoformat()
+    return deckdate
 
 
 # Define urls for api requests
@@ -133,9 +158,12 @@ for crd in data['cards']:
     cardDesc = crd['desc'] + stringEnd
     newstackId = stacks[crd['idList']]
     cardOrder = crd['idShort']
-    cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc}
-    # cardDue = crd['due'] Let's first test without due dates
-    # cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc, 'duedate': cardDue}
+    # Here we check whether the card has a due date, if not, run the first one, if yes, convert the date to ISO 8601
+    if crd['due'] is None:
+        cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc}
+    else:
+        cardDue = convert_date(crd['due'])
+        cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc, 'duedate': cardDue}
     url = cardUrl % (newboardId, newstackId)
     newcardId = api_post(cardData, url)
     cards[cardId] = newcardId
@@ -152,4 +180,3 @@ for crd in data['cards']:
         else:
             print('Assigning label failed to card:', cardName)
 
-# TODO: - due dates

@@ -21,6 +21,6 @@ Simple [Go](https://golang.org/) and Python scripts that can be used to import T
 - [x] Add labels (with colors and descriptions) to the board and assign them to the correct cards
 - [x] Add checklists
 - [ ] ~~Assign users to cards~~ (abandoned)
-- [ ] Add due dates to cards
+- [x] Add due dates to cards
 
 Python script reads the url of the api, username, and password from config.json file, and uses trello-data.json as source data for parsing. Note that Nextcloud Deck cannot handle multiple labels with same names (will cause the script to fail).
