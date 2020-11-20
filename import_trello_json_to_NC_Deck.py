@@ -75,14 +75,14 @@ cardUrl = boardUrl + '/%s/stacks/%s/cards'
 cardLabelUrl = boardUrl + '/%s/stacks/%s/cards/%s/assignLabel'
 
 # Batch processing all json-files in a folder
-datadir = './data/'
+directory = './data/'
 
-for entry in os.scandir(datadir):
-    if entry.path.endswith('.json'):
-        print('\nProcessing file: %s \n' % entry)
+# TODO: The loop works, but there are some errors with some cards.
+for filename in os.scandir(directory):
+    if filename.path.endswith('.json'):
+        print('\nProcessing file: %s \n' % filename.path)
 
-        # Define the source data
-        with open('trello-data.json') as f:
+        with open(filename.path, encoding='utf-8') as f:
             data = json.load(f)
 
         # Add board to Deck and retrieve the new board id
