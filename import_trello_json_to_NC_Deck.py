@@ -2,6 +2,7 @@
 
 import json
 import requests
+import os
 from dateutil import parser
 
 # Configuration from config.json
@@ -73,110 +74,118 @@ stackUrl = boardUrl + '/%s/stacks'
 cardUrl = boardUrl + '/%s/stacks/%s/cards'
 cardLabelUrl = boardUrl + '/%s/stacks/%s/cards/%s/assignLabel'
 
-# Define the source data
-with open('trello-data.json') as f:
-    data = json.load(f)
+# Batch processing all json-files in a folder
+datadir = './data/'
 
-# Add board to Deck and retrieve the new board id
-trelloBoardName = data['name']
-boardData = {'title': trelloBoardName, 'color': '0800fd'}
-newboardId = api_post(boardData, boardUrl)
+for entry in os.scandir(datadir):
+    if entry.path.endswith('.json'):
+        print('\nProcessing file: %s \n' % entry)
+
+        # Define the source data
+        with open('trello-data.json') as f:
+            data = json.load(f)
+
+        # Add board to Deck and retrieve the new board id
+        trelloBoardName = data['name']
+        boardData = {'title': trelloBoardName, 'color': '0800fd'}
+        newboardId = api_post(boardData, boardUrl)
 
 
-# Import labels
-labels = {'labelId': 'newLabelId'}
+        # Import labels
+        labels = {'labelId': 'newLabelId'}
 
-print('')
-print('Importing labels...')
-for label in data['labels']:
-    labelId = label['id']
-    if label['name'] == '':
-        labelTitle = 'Unnamed ' + label['color'] + ' label'
+        print('')
+        print('Importing labels...')
+        for label in data['labels']:
+            labelId = label['id']
+            if label['name'] == '':
+                labelTitle = 'Unnamed ' + label['color'] + ' label'
+            else:
+                labelTitle = label['name']
+            if label['color'] == 'red':
+                labelColor = 'ff0000'
+            elif label['color'] == 'yellow':
+                labelColor = 'ffff00'
+            elif label['color'] == 'orange':
+                labelColor = 'ff6600'
+            elif label['color'] == 'green':
+                labelColor = '00ff00'
+            elif label['color'] == 'purple':
+                labelColor = '9900ff'
+            elif label['color'] == 'blue':
+                labelColor = '0000ff'
+            elif label['color'] == 'sky':
+                labelColor = '00ccff'
+            elif label['color'] == 'lime':
+                labelColor = '00ff99'
+            elif label['color'] == 'pink':
+                labelColor = 'ff66cc'
+            elif label['color'] == 'black':
+                labelColor = '000000'
+            else:
+                labelColor = 'ffffff'
+            labelData = {'title': labelTitle, 'color': labelColor}
+            url = labelUrl % newboardId
+            newLabelId = api_post(labelData, url)
+            labels[labelId] = newLabelId
+
+
+        # Save checklist content into a library
+        checklists = {'checklistId': 'Checklist string'}
+        for checkl in data['checklists']:
+            checklistText = formulate_checklist_text(checkl)
+            checklists[checkl['id']] = checklistText
+
+
+        # Add stacks to the new board
+        print('')
+        print('Importing stacks...')
+        url = stackUrl % newboardId
+        stacks = {'listId': 'newStackId'}
+        order = 1
+        for lst in data['lists']:
+            listId = lst['id']
+            stackName = lst['name']
+            stackData = {'title': stackName, 'order': order}
+            newstackId = api_post(stackData, url)
+            stacks[listId] = newstackId
+            order = order + 1
+
+
+        # Go through the cards and assign them to the correct lists
+        print('')
+        print('Importing cards...')
+        cards = {'cardId': 'newCardId'}
+        for crd in data['cards']:
+            cardId = crd['id']
+            cardName = crd['name']
+            stringEnd = ''
+            for checkl in crd['idChecklists']:
+                # find the respective checklist string from the library that was generated earlier
+                stringEnd = checklists[checkl]
+            cardDesc = crd['desc'] + stringEnd
+            newstackId = stacks[crd['idList']]
+            cardOrder = crd['idShort']
+            # Here we check whether the card has a due date, if not, run the first one, if yes, convert the date to ISO 8601
+            if crd['due'] is None:
+                cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc}
+            else:
+                cardDue = convert_date(crd['due'])
+                cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc, 'duedate': cardDue}
+            url = cardUrl % (newboardId, newstackId)
+            newcardId = api_post(cardData, url)
+            cards[cardId] = newcardId
+
+            # If the card has a label assigned to it, we add it here
+            for lbl in crd['labels']:
+                oldLabelId = lbl['id']
+                newLabelId = int(labels[oldLabelId])
+                updateLabelData = {'labelId': newLabelId}
+                url = cardLabelUrl % (newboardId, newstackId, newcardId)
+                labelResponse = requests.put(url, auth=(apiUser, apiPword), data=updateLabelData)
+                if labelResponse:
+                    print('Label assigned to card', cardName)
+                else:
+                    print('Assigning label failed to card:', cardName)
     else:
-        labelTitle = label['name']
-    if label['color'] == 'red':
-        labelColor = 'ff0000'
-    elif label['color'] == 'yellow':
-        labelColor = 'ffff00'
-    elif label['color'] == 'orange':
-        labelColor = 'ff6600'
-    elif label['color'] == 'green':
-        labelColor = '00ff00'
-    elif label['color'] == 'purple':
-        labelColor = '9900ff'
-    elif label['color'] == 'blue':
-        labelColor = '0000ff'
-    elif label['color'] == 'sky':
-        labelColor = '00ccff'
-    elif label['color'] == 'lime':
-        labelColor = '00ff99'
-    elif label['color'] == 'pink':
-        labelColor = 'ff66cc'
-    elif label['color'] == 'black':
-        labelColor = '000000'
-    else:
-        labelColor = 'ffffff'
-    labelData = {'title': labelTitle, 'color': labelColor}
-    url = labelUrl % newboardId
-    newLabelId = api_post(labelData, url)
-    labels[labelId] = newLabelId
-
-
-# Save checklist content into a library
-checklists = {'checklistId': 'Checklist string'}
-for checkl in data['checklists']:
-    checklistText = formulate_checklist_text(checkl)
-    checklists[checkl['id']] = checklistText
-
-
-# Add stacks to the new board
-print('')
-print('Importing stacks...')
-url = stackUrl % newboardId
-stacks = {'listId': 'newStackId'}
-order = 1
-for lst in data['lists']:
-    listId = lst['id']
-    stackName = lst['name']
-    stackData = {'title': stackName, 'order': order}
-    newstackId = api_post(stackData, url)
-    stacks[listId] = newstackId
-    order = order + 1
-
-
-# Go through the cards and assign them to the correct lists
-print('')
-print('Importing cards...')
-cards = {'cardId': 'newCardId'}
-for crd in data['cards']:
-    cardId = crd['id']
-    cardName = crd['name']
-    stringEnd = ''
-    for checkl in crd['idChecklists']:
-        # find the respective checklist string from the library that was generated earlier
-        stringEnd = checklists[checkl]
-    cardDesc = crd['desc'] + stringEnd
-    newstackId = stacks[crd['idList']]
-    cardOrder = crd['idShort']
-    # Here we check whether the card has a due date, if not, run the first one, if yes, convert the date to ISO 8601
-    if crd['due'] is None:
-        cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc}
-    else:
-        cardDue = convert_date(crd['due'])
-        cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc, 'duedate': cardDue}
-    url = cardUrl % (newboardId, newstackId)
-    newcardId = api_post(cardData, url)
-    cards[cardId] = newcardId
-
-    # If the card has a label assigned to it, we add it here
-    for lbl in crd['labels']:
-        oldLabelId = lbl['id']
-        newLabelId = int(labels[oldLabelId])
-        updateLabelData = {'labelId': newLabelId}
-        url = cardLabelUrl % (newboardId, newstackId, newcardId)
-        labelResponse = requests.put(url, auth=(apiUser, apiPword), data=updateLabelData)
-        if labelResponse:
-            print('Label assigned to card', cardName)
-        else:
-            print('Assigning label failed to card:', cardName)
-
+        continue
