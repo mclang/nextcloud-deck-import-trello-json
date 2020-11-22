@@ -2,6 +2,12 @@
 
 Simple [Go](https://golang.org/) and Python scripts that can be used to import Trello boards into Nextcloud Deck app from exported JSON files using Nextcloud [Deck](https://apps.nextcloud.com/apps/deck) app [API](https://github.com/nextcloud/deck/blob/master/docs/API.md).
 
+Python script reads the url of the api, username, and password from config.json file, and uses .json files in the folder "data" as source data for parsing. Note that Nextcloud Deck cannot handle multiple labels with same names (will cause the script to fail).
+Also, the maximum character count allowed for the descriptions of Deck cards is 250, importing a card will fail if this is exceeded.
+Python script imports also archived cards (as normal cards).
+Card comments are NOT imported, neither is editing history (i.e. when the card was last edited).
+And yes, the script is slow as molasses, but it does its job (at least for me). 
+
 **Go script:**
 
 - [x] Export simple example Trello board
@@ -24,4 +30,3 @@ Simple [Go](https://golang.org/) and Python scripts that can be used to import T
 - [x] Add due dates to cards
 - [x] Added batch process of files (place exported .json files to the folder "data")
 
-Python script reads the url of the api, username, and password from config.json file, and uses .json files in the folder "data" as source data for parsing. Note that Nextcloud Deck cannot handle multiple labels with same names (will cause the script to fail).

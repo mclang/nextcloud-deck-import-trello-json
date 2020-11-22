@@ -13,6 +13,8 @@ apiUser = data['user']
 apiPword = data['password']
 url = data['url']
 
+# Specify the location of data here (the script will try to go through all .json-files in the folder
+directory = './data/'
 
 # Define function for making POST requests
 def api_post(api_data, api_url):
@@ -74,10 +76,8 @@ stackUrl = boardUrl + '/%s/stacks'
 cardUrl = boardUrl + '/%s/stacks/%s/cards'
 cardLabelUrl = boardUrl + '/%s/stacks/%s/cards/%s/assignLabel'
 
-# Batch processing all json-files in a folder
-directory = './data/'
 
-# TODO: The loop works, but there are some errors with some cards.
+# NB: Maximum number of characters allowed in Deck is 250 (import will of a card fail if this is exceeded)
 for filename in os.scandir(directory):
     if filename.path.endswith('.json'):
         print('\nProcessing file: %s \n' % filename.path)
