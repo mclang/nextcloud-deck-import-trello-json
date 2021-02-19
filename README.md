@@ -1,12 +1,35 @@
 # Import Trello Boards into Nextcloud Deck App
 
-Simple [Go](https://golang.org/) and Python scripts that can be used to import Trello boards into Nextcloud Deck app from exported JSON files using Nextcloud [Deck](https://apps.nextcloud.com/apps/deck) app [API](https://github.com/nextcloud/deck/blob/master/docs/API.md).
+Simple script that can be used to import
+[Trello](https://trello.com/) boards from exported JSON files into [Nextcloud](https://nextcloud.com)'s
+[Deck](https://apps.nextcloud.com/apps/deck) app using Nextcloud Deck app
+[API](https://github.com/nextcloud/deck/blob/master/docs/API.md).
 
-Python script reads the url of the api, username, and password from config.json file, and uses .json files in the folder "data" as source data for parsing. Note that Nextcloud Deck cannot handle multiple labels with same names (will cause the script to fail).
-Also, the maximum character count allowed for the descriptions of Deck cards is 250, importing a card will fail if this is exceeded.
-Python script imports also archived cards (as normal cards).
-Card comments are NOT imported, neither is editing history (i.e. when the card was last edited).
-And yes, the script is slow as molasses, but it does its job (at least for me). 
+**Requisites:**
+- [Python v3](https://www.python.org/downloads/)
+- `python-dateutil`
+- `python-scandir`
+
+
+The python script reads following things from `config.json` file:
+- API URL, e.g `https://nextcloud.url/index.php/apps/deck/api/v1.0/`
+- Nextcloud username
+- Nextcloud password (can also be app password!)
+
+Current _patch mode_ implementation tries to parse all `json` files found from `data` sub-directory,
+some make sure the files are what they should be.
+
+Also note that Python script imports archived cards as **normal** cards.
+
+**Known Limitations:**
+- Nextcloud Deck cannot handle **multiple labels** with the **same name** (will cause the script to fail).
+- Maximum character count allowed for the descriptions of Deck cards is **250**.
+- Card comments are **not** imported.
+- Editing history is skipped as well (i.e. when the card was last edited).
+
+And yes, the script is slow as molasses, but it does its job (at least for me).
+
+**NOTE:** Original unfinished [Go](https://golang.org/) script is abandoned in favor of more complete Python implementation.
 
 **Go script:**
 
@@ -29,4 +52,3 @@ And yes, the script is slow as molasses, but it does its job (at least for me).
 - [ ] ~~Assign users to cards~~ (abandoned)
 - [x] Add due dates to cards
 - [x] Added batch process of files (place exported .json files to the folder "data")
-
