@@ -6,7 +6,7 @@ Simple script that can be used to import
 [API](https://github.com/nextcloud/deck/blob/master/docs/API.md).
 
 **Requisites:**
-- [Python v3](https://www.python.org/downloads/)
+- [Python v3](https://www.python.org/downloads/) (tested with Python 3.7)
 - `python-dateutil`
 - `python-scandir`
 
@@ -16,14 +16,14 @@ The python script reads following things from `config.json` file:
 - Nextcloud username
 - Nextcloud password (can also be app password!)
 
-Current _patch mode_ implementation tries to parse all `json` files found from `data` sub-directory,
+Current _batch mode_ implementation tries to parse all `json` files found from `data` sub-directory,
 some make sure the files are what they should be.
 
 Also note that Python script imports archived cards as **normal** cards.
 
 **Known Limitations:**
 - Nextcloud Deck cannot handle **multiple labels** with the **same name** (will cause the script to fail).
-- Maximum character count allowed for the descriptions of Deck cards is **250**.
+- Maximum character count allowed for the titles of Deck cards is **255 characters**.
 - Card comments are **not** imported.
 - Editing history is skipped as well (i.e. when the card was last edited).
 
@@ -48,7 +48,8 @@ And yes, the script is slow as molasses, but it does its job (at least for me).
 - [x] Import lists as Deck stacks with name
 - [x] Import cards into respective stacks with name and markdown-formatted description
 - [x] Add labels (with colors and descriptions) to the board and assign them to the correct cards
-- [x] Add checklists
+- [x] Add checklists (supports also multiple checklists in one card)
 - [ ] ~~Assign users to cards~~ (abandoned)
 - [x] Add due dates to cards
 - [x] Added batch process of files (place exported .json files to the folder "data")
+- [x] archived Trello lists and cards are skipped (not imported at all)

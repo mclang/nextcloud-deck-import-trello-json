@@ -16,6 +16,7 @@ url = data['url']
 # Specify the location of data here (the script will try to go through all .json-files in the folder
 directory = './data/'
 
+
 # Define function for making POST requests
 def api_post(api_data, api_url):
     response = requests.post(api_url, auth=(apiUser, apiPword), data=api_data)
@@ -47,10 +48,10 @@ def api_post(api_data, api_url):
 # Functions for formulating the text strings for checklists
 def checklist_item(item):
     if item['state'] == 'incomplete':
-        string_start = '[ ]'
+        string_start = '- [ ]'
     else:
-        string_start = '[x]'
-    check_item_string = string_start + ' ' + item['name']
+        string_start = '- [x]'
+    check_item_string = string_start + ' ' + item['name'] + '\n'
     return check_item_string
 
 
@@ -77,7 +78,8 @@ cardUrl = boardUrl + '/%s/stacks/%s/cards'
 cardLabelUrl = boardUrl + '/%s/stacks/%s/cards/%s/assignLabel'
 
 
-# NB: Maximum number of characters allowed in Deck is 250 (import will of a card fail if this is exceeded)
+# NB: Maximum number of characters allowed for the title of a card
+# in Deck is 255 (import of a will card fail if this is exceeded)
 for filename in os.scandir(directory):
     if filename.path.endswith('.json'):
         print('\nProcessing file: %s \n' % filename.path)
@@ -89,7 +91,6 @@ for filename in os.scandir(directory):
         trelloBoardName = data['name']
         boardData = {'title': trelloBoardName, 'color': '0800fd'}
         newboardId = api_post(boardData, boardUrl)
-
 
         # Import labels
         labels = {'labelId': 'newLabelId'}
@@ -129,13 +130,14 @@ for filename in os.scandir(directory):
             newLabelId = api_post(labelData, url)
             labels[labelId] = newLabelId
 
+        # Save checklist content into a dictionary (_should_ work even if a card has multiple checklists
+        checklists = {'cardId': {'checklistId': 'checklistString'}}
 
-        # Save checklist content into a library
-        checklists = {'checklistId': 'Checklist string'}
+        for checkl in data['checklists']:
+            checklists[checkl['idCard']] = {}
         for checkl in data['checklists']:
             checklistText = formulate_checklist_text(checkl)
-            checklists[checkl['id']] = checklistText
-
+            checklists[checkl['idCard']][checkl['id']] = checklistText
 
         # Add stacks to the new board
         print('')
@@ -144,6 +146,10 @@ for filename in os.scandir(directory):
         stacks = {'listId': 'newStackId'}
         order = 1
         for lst in data['lists']:
+            # If a list (= stack in Deck) is archived, skips to the next one.
+            if lst['closed']:
+                print('List ' + lst['name'] + ' is archived, skipping to the next one...')
+                continue
             listId = lst['id']
             stackName = lst['name']
             stackData = {'title': stackName, 'order': order}
@@ -151,22 +157,28 @@ for filename in os.scandir(directory):
             stacks[listId] = newstackId
             order = order + 1
 
-
-        # Go through the cards and assign them to the correct lists
+        # Go through the cards and assign them to the correct lists (= stacks in Deck)
         print('')
         print('Importing cards...')
         cards = {'cardId': 'newCardId'}
         for crd in data['cards']:
+            # Check whether a card is archived, if true, skipping to the next card
+            if crd['closed']:
+                print('Card ' + crd['name'] + ' is archived, skipping...')
+                continue
             cardId = crd['id']
             cardName = crd['name']
             stringEnd = ''
-            for checkl in crd['idChecklists']:
-                # find the respective checklist string from the library that was generated earlier
-                stringEnd = checklists[checkl]
+            # Insert checklists from previously created dictionary, if a card has one
+            # Should
+            if len(crd['idChecklists']) != 0:
+                for checklistId in checklists[cardId]:
+                    stringEnd = stringEnd + '\n' + checklists[cardId][checklistId]
             cardDesc = crd['desc'] + stringEnd
             newstackId = stacks[crd['idList']]
             cardOrder = crd['idShort']
-            # Here we check whether the card has a due date, if not, run the first one, if yes, convert the date to ISO 8601
+            # Here we check whether the card has a due date,
+            # if not, run the first one, if yes, convert the date to ISO 8601
             if crd['due'] is None:
                 cardData = {'title': cardName, 'type': 'plain', 'order': cardOrder, 'description': cardDesc}
             else:
